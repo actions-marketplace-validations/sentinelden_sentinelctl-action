@@ -82,3 +82,8 @@ sha256sum -c sentinelctl-amd64.sha256
 The audit runs entirely on your runner. Your binary is never uploaded
 anywhere. Without a `license-key` the action makes no network call except to
 download the CLI itself.
+
+## Licence
+
+Free to use, including in commercial CI. See [LICENSE](LICENSE). Your reports
+and SBOMs are your property. No redistribution as a competing product.
