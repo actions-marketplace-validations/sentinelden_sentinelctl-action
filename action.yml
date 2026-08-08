@@ -1,0 +1,191 @@
+# SentinelDen Studio audit — published GitHub Action wrapper for
+# sentinelctl-linux. Customers consume this directly in their workflow
+# YAML; they don't have to think about Docker / binaries / paths.
+#
+# Distribution: published to GitHub Marketplace as `sentinelden/sentinelctl-action`.
+# Pinning recommended: `sentinelden/sentinelctl-action@v1` (major tag,
+# moves with patches) or `@v1.0.0` (immutable).
+#
+# Example usage in customer's .github/workflows/audit.yml:
+#
+#   jobs:
+#     audit:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: actions/checkout@v4
+#         - uses: sentinelden/sentinelctl-action@v1
+#           with:
+#             binary: ./build/MyApp.ipa
+#             rules: masvs,hipaa
+#             severity-threshold: high
+#             license-key: ${{ secrets.SENTINEL_LICENSE_KEY }}
+#         - uses: github/codeql-action/upload-sarif@v3
+#           with:
+#             sarif_file: sentinel-report.sarif
+#
+
+name: 'SentinelDen Studio Audit'
+description: >
+  Run the SentinelDen Studio iOS audit engine against your .ipa or .app
+  bundle. Surfaces findings into GitHub code-scanning via SARIF.
+author: 'Sentinel Den'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  binary:
+    description: 'Path to the .ipa / .app / Mach-O binary to audit.'
+    required: true
+  severity-threshold:
+    description: >
+      Threshold for non-zero exit. One of: critical | high | medium | low | info.
+      Default: high (any high+ finding fails the job).
+    required: false
+    default: 'high'
+  rules:
+    description: >
+      Comma-separated rule-pack names (e.g., `masvs,hipaa,pci`).
+      Currently ignored in v1 (baseline rules only); reserved for v1.1.
+    required: false
+    default: 'baseline'
+  license-key:
+    description: >
+      sub_xxx license key. If empty, the action runs in preview mode
+      with no license check (severity threshold still applies).
+    required: false
+    default: ''
+  output-dir:
+    description: 'Directory to write report artifacts into.'
+    required: false
+    default: 'sentinel-reports'
+  sentinelctl-version:
+    description: 'sentinelctl-linux version. Use to pin against the action major.'
+    required: false
+    default: '1.3.0'
+
+outputs:
+  sarif-path:
+    description: 'Path to the SARIF 2.1 report (suitable for github/codeql-action/upload-sarif).'
+    value: ${{ steps.run.outputs.sarif-path }}
+  sbom-path:
+    description: 'Path to the CycloneDX 1.5 SBOM.'
+    value: ${{ steps.run.outputs.sbom-path }}
+  finding-count:
+    description: 'Total findings discovered.'
+    value: ${{ steps.run.outputs.finding-count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch sentinelctl
+      shell: bash
+      env:
+        VERSION: ${{ inputs.sentinelctl-version }}
+      run: |
+        set -euo pipefail
+        ARCH=$(uname -m)
+        case "$ARCH" in
+          x86_64)  ASSET="sentinelctl-amd64" ;;
+          aarch64) ASSET="sentinelctl-arm64" ;;
+          *)
+            echo "::error::Unsupported architecture: $ARCH"
+            exit 1
+            ;;
+        esac
+        URL="https://github.com/sentinelden/sentinelctl-linux/releases/download/v${VERSION}/${ASSET}"
+
+        if ! curl -sSLf -o /tmp/sentinelctl "$URL"; then
+          echo "::error::Could not download sentinelctl ${VERSION} for ${ARCH}."
+          echo "::error::Tried: ${URL}"
+          echo "::error::Check that a release tagged v${VERSION} exists with that asset."
+          exit 1
+        fi
+
+        # Integrity check against the checksum published beside the binary.
+        # This was previously a TODO that fetched a .sig and never verified
+        # it, which is worse than no check: it looks verified and is not.
+        # SHA-256 is what the release workflow actually publishes, so this
+        # verifies something that exists rather than something aspirational.
+        if curl -sSLf -o /tmp/sentinelctl.sha256 "${URL}.sha256"; then
+          EXPECTED=$(grep -oE '[a-f0-9]{64}' /tmp/sentinelctl.sha256 | head -1)
+          ACTUAL=$(sha256sum /tmp/sentinelctl | cut -d' ' -f1)
+          if [ -z "$EXPECTED" ]; then
+            echo "::error::Published checksum file contained no SHA-256."
+            exit 1
+          fi
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "::error::Checksum mismatch. Refusing to execute the download."
+            echo "::error::expected $EXPECTED"
+            echo "::error::actual   $ACTUAL"
+            exit 1
+          fi
+          echo "sentinelctl ${VERSION} checksum verified."
+        else
+          # Fail rather than warn. This action runs arbitrary downloaded code
+          # against a customer's build artifact inside their CI; silently
+          # skipping integrity verification is not an acceptable default.
+          echo "::error::No published checksum at ${URL}.sha256. Refusing to run an unverified binary."
+          exit 1
+        fi
+
+        chmod +x /tmp/sentinelctl
+
+    - name: Run audit
+      id: run
+      shell: bash
+      env:
+        SENTINEL_LICENSE_KEY: ${{ inputs.license-key }}
+        BINARY: ${{ inputs.binary }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        THRESHOLD: ${{ inputs.severity-threshold }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$OUTPUT_DIR"
+        SARIF="$OUTPUT_DIR/sentinel-report.sarif"
+        SBOM="$OUTPUT_DIR/sentinel-sbom.cyclonedx.json"
+        JSON="$OUTPUT_DIR/sentinel-report.json"
+        MD="$OUTPUT_DIR/sentinel-report.md"
+
+        EXIT=0
+        /tmp/sentinelctl audit "$BINARY" \
+          --min "$THRESHOLD" \
+          --sarif "$SARIF" \
+          --sbom "$SBOM" \
+          --json "$JSON" \
+          --markdown "$MD" \
+          || EXIT=$?
+
+        # Surface artifact paths for downstream steps regardless of
+        # the audit's exit code — failing the build is the action's
+        # job, but the report itself is still useful.
+        echo "sarif-path=$SARIF" >> "$GITHUB_OUTPUT"
+        echo "sbom-path=$SBOM"   >> "$GITHUB_OUTPUT"
+
+        # `findingCount` is a real top-level key in the CLI's JSON report,
+        # confirmed against an actual run. Parsed with jq (present on all
+        # GitHub-hosted runners) rather than a grep over raw JSON, because the
+        # grep would also match the string inside a finding's description and
+        # would report 0 forever if the key were ever renamed.
+        if [ -f "$JSON" ] && command -v jq >/dev/null 2>&1; then
+          COUNT=$(jq -r '.findingCount // (.findings | length) // 0' "$JSON")
+        elif [ -f "$JSON" ]; then
+          COUNT=$(grep -o '"findingCount"[[:space:]]*:[[:space:]]*[0-9]*' "$JSON" \
+                  | grep -oE '[0-9]+$' | head -1 || echo 0)
+        else
+          echo "::warning::No JSON report was produced; reporting 0 findings."
+          COUNT=0
+        fi
+        echo "finding-count=$COUNT" >> "$GITHUB_OUTPUT"
+        echo "sentinelctl found ${COUNT} finding(s); threshold is ${THRESHOLD}."
+
+        # Re-raise the original exit code so the workflow status
+        # reflects the audit verdict.
+        exit "$EXIT"
+
+    - name: Upload reports as artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sentinel-reports
+        path: ${{ inputs.output-dir }}
