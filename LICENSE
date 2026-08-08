@@ -1,0 +1,95 @@
+SentinelDen Studio Audit Action and sentinelctl
+Software Licence Agreement
+
+Copyright (c) 2026 Muhammad Khan, trading as SentinelDen. All rights reserved.
+
+This licence covers this GitHub Action (the "Action") and the sentinelctl
+command line binary it downloads and runs (the "Software"). Read it before
+using either.
+
+1. GRANT OF LICENCE
+
+You are granted a worldwide, royalty-free, non-exclusive licence to:
+
+  a) download, install, run and execute the Software, including automatically
+     as part of a continuous integration pipeline;
+  b) use the Software to audit software you own, or that you are authorised to
+     audit, for any purpose, including commercial and internal business use;
+  c) use, keep, publish and act upon the reports, findings, SARIF output and
+     SBOM documents the Software produces.
+
+There is no charge for this licence and no account or registration is
+required.
+
+2. YOUR OUTPUT IS YOURS
+
+Reports, findings and SBOMs produced by the Software are your property. No
+claim is made over them. You may publish them, share them with auditors and
+customers, and use them in your own commercial work without restriction or
+attribution.
+
+3. RESTRICTIONS
+
+You may not:
+
+  a) redistribute, resell, sublicense or host the Software as, or as part of,
+     a competing product or service;
+  b) reverse engineer, decompile or disassemble the Software, except to the
+     extent that applicable law expressly permits this despite this
+     restriction;
+  c) remove or alter any copyright, licence or attribution notice;
+  d) use the Software to audit software you neither own nor are authorised to
+     audit.
+
+Running the Software inside your own organisation, on your own or your
+clients' software, under a consulting or contracting engagement, is permitted
+and is not "redistribution" under clause 3(a).
+
+4. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+
+Specifically, and without limiting the above: a security audit is a
+point-in-time, best-effort analysis. It does not and cannot identify every
+vulnerability. A clean result is not a certification, an attestation, or a
+guarantee that software is secure. You remain solely responsible for the
+security of your own software and for any decision you make on the basis of a
+report.
+
+5. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+6. NO SUPPORT COMMITMENT
+
+This is free software provided by a single independent developer. No service
+level, response time, availability or maintenance commitment is offered or
+implied. Issues and questions are welcome and are answered on a best-effort
+basis. Commercial support is available separately under a written agreement.
+
+7. TERMINATION AND CONTINUITY
+
+This licence continues until terminated. It terminates automatically if you
+breach clause 3 and do not remedy the breach within 30 days of being notified.
+
+Withdrawal of a published version does not terminate your licence to a version
+you already obtained. If a release is removed from distribution, any copy you
+already hold remains licensed to you under these terms.
+
+8. SEPARATE PRODUCTS
+
+The SentinelDen SDKs and the SentinelDen Studio desktop application are
+separate commercial products, licensed separately, and are not covered by this
+licence.
+
+9. GOVERNING LAW
+
+This licence is governed by the laws of the Province of British Columbia and
+the federal laws of Canada applicable therein.
+
+Contact: mk@sentinelden.com
