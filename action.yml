@@ -93,7 +93,12 @@ runs:
             exit 1
             ;;
         esac
-        URL="https://github.com/sentinelden/sentinelctl-linux/releases/download/v${VERSION}/${ASSET}"
+        # Fetched from THIS repo's own releases, published by CI in the
+        # private engine repo. The engine source stays private; only the
+        # compiled binary is distributed. `cli-v*` tags carry binaries and are
+        # deliberately distinct from the `v1` / `v1.x` tags users pin the
+        # action itself to.
+        URL="https://github.com/sentinelden/sentinelctl-action/releases/download/cli-v${VERSION}/${ASSET}"
 
         if ! curl -sSLf -o /tmp/sentinelctl "$URL"; then
           echo "::error::Could not download sentinelctl ${VERSION} for ${ARCH}."
