@@ -87,7 +87,15 @@ runs:
         ARCH=$(uname -m)
         case "$ARCH" in
           x86_64)  ASSET="sentinelctl-amd64" ;;
-          aarch64) ASSET="sentinelctl-arm64" ;;
+          # No arm64 binary is published; the release workflow builds amd64
+          # only. Mapping aarch64 to a nonexistent asset made arm64 runners
+          # fail later with "check that a release exists", pointing the user at
+          # the wrong problem. ACTION.md already promises a clear message.
+          aarch64|arm64)
+            echo "::error::sentinelctl ships Linux x86_64 only. This runner is ${ARCH}."
+            echo "::error::Use an x86_64 runner (ubuntu-latest is x86_64)."
+            exit 1
+            ;;
           *)
             echo "::error::Unsupported architecture: $ARCH"
             exit 1
@@ -98,12 +106,28 @@ runs:
         # compiled binary is distributed. `cli-v*` tags carry binaries and are
         # deliberately distinct from the `v1` / `v1.x` tags users pin the
         # action itself to.
+        # Validate BEFORE the version reaches a URL. Without this, a value like
+        # "../../attacker/repo/releases/download/v1.0.0" retargets the download,
+        # and because the .sha256 URL is derived from the same ${URL} prefix the
+        # attacker supplies a matching checksum too. The integrity gate below
+        # then prints "checksum verified", chmod +x's the file and runs it
+        # against the caller's build artifact with the job's secrets in scope.
+        # A bypassed control is worse than no control.
+        #
+        # Reachable without write access to a protected workflow file:
+        # workflow_dispatch inputs, reusable-workflow and composite-action
+        # parameters, and repository or organization variables all feed it.
+        if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "::error::sentinelctl-version '${VERSION}' is not a plain X.Y.Z version."
+          exit 1
+        fi
+
         URL="https://github.com/sentinelden/sentinelctl-action/releases/download/cli-v${VERSION}/${ASSET}"
 
         if ! curl -sSLf -o /tmp/sentinelctl "$URL"; then
           echo "::error::Could not download sentinelctl ${VERSION} for ${ARCH}."
           echo "::error::Tried: ${URL}"
-          echo "::error::Check that a release tagged v${VERSION} exists with that asset."
+          echo "::error::Check that a release tagged cli-v${VERSION} exists with that asset."
           exit 1
         fi
 
