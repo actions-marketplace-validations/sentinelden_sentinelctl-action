@@ -114,7 +114,7 @@ The audit runs entirely on your runner. Your binary is never uploaded
 anywhere. The only network call the action makes is downloading the CLI
 itself; a `license-key` is not sent anywhere.
 
-## Licence
+## License
 
 Free to use, including in commercial CI. See [LICENSE](LICENSE). Your reports
 and SBOMs are your property. No redistribution as a competing product.

@@ -34,7 +34,7 @@ description: 'Audit your iOS or Android build in CI. Findings land in GitHub cod
 author: 'Sentinel Den'
 branding:
   icon: 'shield'
-  # The nearest Marketplace colour to the Sentinel Amber brand gold.
+  # The nearest Marketplace color to the Sentinel Amber brand gold.
   color: 'yellow'
 
 inputs:
